@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Clinical RAG Chatbot - Mobile</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 100%;
+            height: 95vh;
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        
+        .upload-section {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+            flex-shrink: 0;
+            max-height: 35vh;
+            overflow-y: auto;
+        }
+        
+        .upload-area {
+            border: 2px dashed #4CAF50;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+        
+        .upload-area:hover, .upload-area:active {
+            border-color: #45a049;
+            background: rgba(76, 175, 80, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #45a049;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .upload-text {
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .processing-status {
+            margin-top: 12px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #1976d2;
+            display: none;
+        }
+        
+        .processing-status.show {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .uploaded-files {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .file-tag {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .file-tag.processing {
+            background: #ff9800;
+        }
+        
+        .file-tag.ready {
+            background: #4CAF50;
+        }
+        
+        .file-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .rag-stats {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f0f8f0;
+            border-radius: 8px;
+            font-size: 10px;
+            color: #2e7d32;
+            display: none;
+        }
+        
+        .rag-stats.show {
+            display: block;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+        
+        .message.user {
+            background: #4CAF50;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.bot {
+            background: #f1f1f1;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            position: relative;
+        }
+        
+        .message.loading {
+            background: #f1f1f1;
+            color: #666;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .source-info {
+            font-size: 9px;
+            color: #666;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+            font-style: italic;
+        }
+        
+        .relevance-score {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 2px 5px;
+            border-radius: 10px;
+            font-size: 8px;
+            margin-left: 5px;
+        }
+        
+        .export-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .export-btn:hover {
+            background: #1976D2;
+        }
+        
+        .clinical-response h3 {
+            color: #4CAF50;
+            margin: 10px 0 6px 0;
+            font-size: 13px;
+        }
+        
+        .clinical-response h4 {
+            color: #666;
+            margin: 8px 0 5px 0;
+            font-size: 12px;
+        }
+        
+        .clinical-response ul {
+            margin: 6px 0;
+            padding-left: 18px;
+        }
+        
+        .clinical-response li {
+            margin: 3px 0;
+        }
+        
+        .clinical-response strong {
+            color: #333;
+        }
+        
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            font-size: 11px;
+            color: #856404;
+        }
+        
+        .input-section {
+            padding: 15px;
+            border-top: 1px solid #eee;
+            background: white;
+            flex-shrink: 0;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            -webkit-appearance: none;
+        }
+        
+        #messageInput:focus {
+            border-color: #4CAF50;
+        }
+        
+        #sendButton {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+        
+        #sendButton:hover:not(:disabled) {
+            background: #45a049;
+        }
+        
+        #sendButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status-indicator {
+            padding: 8px 15px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            border-top: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .api-config {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border: 1px solid #b3d9ff;
+        }
+        
+        .api-config h3 {
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #1976d2;
+        }
+        
+        .api-config select, .api-config input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            -webkit-appearance: none;
+        }
+        
+        .api-config label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 11px;
+            color: #555;
+        }
+        
+        .api-status {
+            font-size: 10px;
+            padding: 4px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        
+        .api-status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .api-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        /* Mobile-specific adjustments */
+        @media (max-width: 480px) {
+            .container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 12px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .header p {
+                font-size: 11px;
+            }
+            
+            .upload-section {
+                padding: 12px;
+                max-height: 30vh;
+            }
+            
+            .upload-area {
+                padding: 12px;
+            }
+            
+            .upload-text {
+                font-size: 13px;
+            }
+            
+            .message {
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+            
+            .input-section {
+                padding: 12px;
+            }
+            
+            #messageInput {
+                font-size: 13px;
+                padding: 10px 14px;
+            }
+            
+            #sendButton {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .export-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+        }
+        
+        /* Prevent zoom on input focus */
+        input, select, textarea {
+            font-size: 16px !important;
+            transform: scale(0.875);
+            transform-origin: left center;
+            width: 114%;
+            margin-left: -7%;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            transform: scale(0.875);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Clinical RAG Chatbot</h1>
+            <p>Mobile-optimized document analysis</p>
+        </div>
+        <div class="upload-section">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" multiple accept=".pdf" />
+                <div class="upload-text">
+                    📄 Upload Clinical PDFs
+                </div>
+                <div style="font-size: 11px; color: #999;">
+                    Tap to select documents
+                </div>
+            </div>
+            
+            <div class="processing-status" id="processingStatus">
+                <div id="processingText">Processing documents...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
+            <div class="uploaded-files" id="uploadedFiles"></div>
+            
+            <div class="rag-stats" id="ragStats">
+                <strong>📊 Knowledge Base:</strong> 
+                <span id="statsText">0 documents, 0 chunks</span>
+            </div>
+            
+            <div class="api-config">
+                <h3>🔑 API Configuration</h3>
+                <label for="apiKey">Groq API Key:</label>
+                <input type="password" id="apiKey" placeholder="Enter your API key">
+                
+                <label for="llmModel">Model:</label>
+                <select id="llmModel">
+                    <option value="llama3-8b-8192">Llama 3 8B</option>
+                    <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                    <option value="gemma-7b-it">Gemma 7B</option>
+                </select>
+                
+                <div id="apiStatus" class="api-status" style="display: none;"></div>
+            </div>
+        </div>
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="message bot">
+                    🧠 <strong>Mobile Clinical Assistant</strong><br><br>
+                    Upload clinical documents and ask questions. Optimized for mobile use with:
+                    <br>• Touch-friendly interface
+                    <br>• Fast processing
+                    <br>• Affordable API costs
+                </div>
+            </div>
+            <div class="input-section">
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Ask clinical questions..."
+                        disabled
+                    />
+                    <button id="sendButton" disabled>Send</button>
+                    <button id="exportButton" class="export-btn" onclick="exportConversation()">📄</button>
+                </div>
+            </div>
+        </div>
+        <div class="status-indicator" id="statusIndicator">
+            Upload PDFs and configure API to start
+        </div>
+    </div>
+    
+    <script>
+        // RAG System State
+        let uploadedFiles = [];
+        let documentChunks = [];
+        let embeddings = [];
+        let conversationHistory = [];
+        let isProcessing = false;
+        let ragStats = {
+            totalDocuments: 0,
+            totalChunks: 0,
+            totalEmbeddings: 0
+        };
+        
+        // API Configuration
+        let apiConfig = {
+            apiKey: '',
+            llmModel: 'llama3-8b-8192'
+        };
+        
+        // DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.querySelector('.upload-area');
+        const uploadedFilesDiv = document.getElementById('uploadedFiles');
+        const processingStatus = document.getElementById('processingStatus');
+        const progressFill = document.getElementById('progressFill');
+        const processingText = document.getElementById('processingText');
+        const ragStatsDiv = document.getElementById('ragStats');
+        const statsText = document.getElementById('statsText');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const apiKeyInput = document.getElementById('apiKey');
+        const llmModelSelect = document.getElementById('llmModel');
+        const apiStatusDiv = document.getElementById('apiStatus');
+        
+        // Event Listeners
+        fileInput.addEventListener('change', handleFiles);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        sendButton.addEventListener('click', sendMessage);
+        apiKeyInput.addEventListener('input', updateApiConfig);
+        llmModelSelect.addEventListener('change', updateApiConfig);
+        
+        // Touch events for mobile
+        uploadArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            document.getElementById('fileInput').click();
+        });
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Update API Configuration
+        function updateApiConfig() {
+            apiConfig.apiKey = apiKeyInput.value;
+            apiConfig.llmModel = llmModelSelect.value;
+            
+            if (apiConfig.apiKey) {
+                validateApiKey();
+            } else {
+                apiStatusDiv.style.display = 'none';
+            }
+        }
+        
+        // Validate API Key
+        async function validateApiKey() {
+            try {
+                apiStatusDiv.textContent = 'Validating...';
+                apiStatusDiv.className = 'api-status';
+                apiStatusDiv.style.display = 'block';
+                
+                const response = await fetch("https://api.groq.com/openai/v1/models", {
+                    headers: {
+                        "Authorization": `Bearer ${apiConfig.apiKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    apiStatusDiv.textContent = 'API key valid';
+                    apiStatusDiv.className = 'api-status success';
+                    updateUI();
+                } else {
+                    throw new Error('Invalid key');
+                }
+            } catch (error) {
+                apiStatusDiv.textContent = 'Invalid API key';
+                apiStatusDiv.className = 'api-status error';
+            }
+        }
+        
+        async function handleFiles(event) {
+            const files = Array.from(event.target.files);
+            const newFiles = files.filter(file => 
+                file.type === 'application/pdf' && 
+                !uploadedFiles.find(f => f.name === file.name)
+            );
+            
+            if (newFiles.length === 0) return;
+            
+            uploadedFiles.push(...newFiles);
+            updateFileDisplay();
+            
+            await processFilesForRAG(newFiles);
+        }
+        
+        async function processFilesForRAG(files) {
+            processingStatus.classList.add('show');
+            isProcessing = true;
+            updateUI();
+            
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const progress = ((i + 1) / files.length) * 100;
+                    
+                    processingText.textContent = `Processing ${file.name}... (${i + 1}/${files.length})`;
+                    progressFill.style.width = `${progress}%`;
+                    
+                    await processFileForRAG(file);
+                }
+                
+                processingStatus.classList.remove('show');
+                ragStatsDiv.classList.add('show');
+                updateRAGStats();
+                updateUI();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                processingStatus.classList.remove('show');
+                updateStatus('Error processing files');
+            }
+        }
+        
+        async function processFileForRAG(file) {
+            try {
+                const fullText = await extractTextFromPDF(file);
+                const chunks = chunkClinicalText(fullText, file.name);
+                const chunkEmbeddings = await generateEmbeddings(chunks);
+                
+                documentChunks.push(...chunks);
+                embeddings.push(...chunkEmbeddings);
+                
+                ragStats.totalDocuments++;
+                ragStats.totalChunks += chunks.length;
+                ragStats.totalEmbeddings += chunkEmbeddings.length;
+                
+                const fileTag = document.querySelector(`[data-filename="${file.name}"]`);
+                if (fileTag) {
+                    fileTag.classList.remove('processing');
+                    fileTag.classList.add('ready');
+                }
+                
+            } catch (error) {
+                console.error(`Error processing ${file.name}:`, error);
+                throw error;
+            }
+        }
+        
+        async function extractTextFromPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                }
+                
+                return fullText;
+            } catch (error) {
+                console.error(`Error extracting text:`, error);
+                throw error;
+            }
+        }
+        
+        function chunkClinicalText(text, sourceFile, chunkSize = 600, overlap = 150) {
+            const chunks = [];
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            
+            let currentChunk = '';
+            let chunkIndex = 0;
+            
+            for (let i = 0; i < sentences.length; i++) {
+                const sentence = sentences[i].trim() + '.';
+                
+                if ((currentChunk + sentence).length > chunkSize && currentChunk.length > 0) {
+                    chunks.push({
+                        id: `${sourceFile}_chunk_${chunkIndex}`,
+                        text: currentChunk.trim(),
+                        source: sourceFile,
+                        chunkIndex: chunkIndex,
+                        wordCount: currentChunk.split(' ').length
+                    });
+                    
+                    const words = currentChunk.split(' ');
+                    const overlapWords = words.slice(-Math.floor(overlap / 4));
+                    currentChunk = overlapWords.join(' ') + ' ' + sentence;
+                    chunkIndex++;
+                } else {
+                    currentChunk += (currentChunk ? ' ' : '') + sentence;
+                }
+            }
+            
+            if (currentChunk.trim().length > 0) {
+                chunks.push({
+                    id: `${sourceFile}_chunk_${chunkIndex}`,
+                    text: currentChunk.trim(),
+                    source: sourceFile,
+                    chunkIndex: chunkIndex,
+                    wordCount: currentChunk.split(' ').length
+                });
+            }
+            
+            return chunks;
+        }
+        
+        async function generateEmbeddings(chunks) {
+            const embeddings = [];
+            
+            for (const chunk of chunks) {
+                const embedding = createSimpleEmbedding(chunk.text);
+                embeddings.push({
+                    id: chunk.id,
+                    vector: embedding,
+                    chunk: chunk
+                });
+            }
+            
+            return embeddings;
+        }
+        
+        function createSimpleEmbedding(text) {
+            const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+            const vector = new Array(100).fill(0);
+            
+            words.forEach(word => {
+                const hash = simpleHash(word) % 100;
+                vector[hash] += 1;
+            });
+            
+            const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+            return magnitude > 0 ? vector.map(val => val / magnitude) : vector;
+        }
+        
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash);
+        }
+        
+        function cosineSimilarity(vecA, vecB) {
+            if (vecA.length !== vecB.length) return 0;
+            
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            
+            for (let i = 0; i < vecA.length; i++) {
+                dotProduct += vecA[i] * vecB[i];
+                normA += vecA[i] * vecA[i];
+                normB += vecB[i] * vecB[i];
+            }
+            
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+        
+        async function retrieveRelevantChunks(query, topK = 3) {
+            if (embeddings.length === 0) {
+                throw new Error('No documents processed');
+            }
+            
+            const queryEmbedding = createSimpleEmbedding(query);
+            
+            const similarities = embeddings.map(item => ({
+                ...item,
+                similarity: cosineSimilarity(queryEmbedding, item.vector)
+            }));
+            
+            return similarities
+                .sort((a, b) => b.similarity - a.similarity)
+                .slice(0, topK);
+        }
+        
+        function updateFileDisplay() {
+            uploadedFilesDiv.innerHTML = uploadedFiles.map(file => `
+                <div class="file-tag processing" data-filename="${file.name}">
+                    📄 ${file.name}
+                    <span class="remove" onclick="removeFile('${file.name}')">&times;</span>
+                </div>
+            `).join('');
+        }
+        
+        function removeFile(fileName) {
+            uploadedFiles = uploadedFiles.filter(f => f.name !== fileName);
+            
+            const chunksToRemove = documentChunks.filter(chunk => chunk.source === fileName);
+            documentChunks = documentChunks.filter(chunk => chunk.source !== fileName);
+            embeddings = embeddings.filter(emb => !emb.id.startsWith(fileName));
+            
+            ragStats.totalDocuments--;
+            ragStats.totalChunks -= chunksToRemove.length;
+            ragStats.totalEmbeddings -= chunksToRemove.length;
+            
+            updateFileDisplay();
+            updateRAGStats();
+            updateUI();
+        }
+        
+        function updateRAGStats() {
+            statsText.textContent = `${ragStats.totalDocuments} docs, ${ragStats.totalChunks} chunks`;
+        }
+        
+        function updateUI() {
+            const hasFiles = uploadedFiles.length > 0;
+            const allProcessed = !isProcessing && ragStats.totalChunks > 0;
+            
+            messageInput.disabled = !allProcessed;
+            sendButton.disabled = !allProcessed || isProcessing;
+            
+            if (allProcessed) {
+                updateStatus(`Ready: ${ragStats.totalChunks} chunks`);
+            } else if (isProcessing) {
+                updateStatus('Processing...');
+            } else {
+                updateStatus('Upload PDFs to start');
+            }
+        }
+        
+        function updateStatus(message) {
+            statusIndicator.textContent = message;
+        }
+        
+        function addMessage(content, isUser = false, sourceInfo = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            if (isUser) {
+                messageDiv.textContent = content;
+            } else {
+                const formattedContent = formatClinicalResponse(content);
+                messageDiv.innerHTML = formattedContent;
+                messageDiv.classList.add('clinical-response');
+                
+                if (sourceInfo) {
+                    const sourceDiv = document.createElement('div');
+                    sourceDiv.className = 'source-info';
+                    sourceDiv.innerHTML = sourceInfo;
+                    messageDiv.appendChild(sourceDiv);
+                }
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return messageDiv;
+        }
+        
+        function formatClinicalResponse(content) {
+            let formatted = content;
+            
+            formatted = formatted.replace(/### (.*?)$/gm, '<h3>$1</h3>');
+            formatted = formatted.replace(/## (.*?)$/gm, '<h3>$1</h3>');
+            formatted = formatted.replace(/# (.*?)$/gm, '<h3>$1</h3>');
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/^\* (.*?)$/gm, '<li>$1</li>');
+            formatted = formatted.replace(/^- (.*?)$/gm, '<li>$1</li>');
+            formatted = formatted.replace(/(<li>.*?<\/li>\s*)+/gs, '<ul>$&</ul>');
+            formatted = formatted.replace(/\n\n/g, '<br><br>');
+            formatted = formatted.replace(/\n/g, '<br>');
+            
+            if (formatted.toLowerCase().includes('treatment') || 
+                formatted.toLowerCase().includes('diagnosis') || 
+                formatted.toLowerCase().includes('medication')) {
+                formatted += '<div class="disclaimer">⚠️ For educational use only</div>';
+            }
+            
+            return formatted;
+        }
+        
+        async function sendMessage() {
+            if (isProcessing || !messageInput.value.trim() || ragStats.totalChunks === 0) return;
+            
+            const userMessage = messageInput.value.trim();
+            messageInput.value = '';
+            isProcessing = true;
+            sendButton.disabled = true;
+            
+            addMessage(userMessage, true);
+            conversationHistory.push({ role: "user", content: userMessage });
+            
+            const loadingMessage = addMessage('🧠 Searching...', false);
+            loadingMessage.classList.add('loading');
+            
+            try {
+                const result = await queryRAGSystem(userMessage);
+                loadingMessage.remove();
+                
+                const sourceInfo = result.sources.map(source => 
+                    `📄 ${source.source} <span class="relevance-score">${Math.round(source.similarity * 100)}%</span>`
+                ).join('<br>');
+                
+                addMessage(result.response, false, sourceInfo);
+                conversationHistory.push({ role: "assistant", content: result.response });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingMessage.remove();
+                addMessage('❌ Error. Try again.', false);
+            } finally {
+                isProcessing = false;
+                updateUI();
+            }
+        }
+        
+        async function queryRAGSystem(question) {
+            try {
+                const relevantChunks = await retrieveRelevantChunks(question, 3);
+                
+                if (relevantChunks.length === 0) {
+                    throw new Error('No relevant info found');
+                }
+                
+                const context = relevantChunks.map((item, index) => 
+                    `[Doc: ${item.chunk.source}, Part ${item.chunkIndex + 1}]\n${item.chunk.text}`
+                ).join('\n\n---\n\n');
+                
+                const systemPrompt = `You are a clinical assistant using RAG. Base your response ONLY on the provided passages. If insufficient info, say so. Reference specific documents. Use professional medical language.
+
+CONTEXT:
+${context}
+
+QUESTION: ${question}`;
+                
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiConfig.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: apiConfig.llmModel,
+                        messages: [{ role: "user", content: systemPrompt }],
+                        max_tokens: 1000,
+                        temperature: 0.1
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                return {
+                    response: data.choices[0].message.content,
+                    sources: relevantChunks.map(item => ({
+                        source: item.chunk.source,
+                        chunkIndex: item.chunkIndex,
+                        similarity: item.similarity,
+                        text: item.chunk.text.substring(0, 150) + '...'
+                    }))
+                };
+                
+            } catch (error) {
+                console.error('Error querying RAG:', error);
+                throw error;
+            }
+        }
+        
+        function exportConversation() {
+            if (conversationHistory.length === 0) {
+                alert('No conversation to export');
+                return;
+            }
+            
+            let exportText = `Clinical RAG Chat - Mobile Export\n`;
+            exportText += `Date: ${new Date().toLocaleString()}\n`;
+            exportText += `Docs: ${ragStats.totalDocuments}, Chunks: ${ragStats.totalChunks}\n`;
+            exportText += `${'='.repeat(60)}\n\n`;
+            
+            for (let i = 0; i < conversationHistory.length; i += 2) {
+                const userMsg = conversationHistory[i];
+                const botMsg = conversationHistory[i + 1];
+                
+                if (userMsg && userMsg.role === 'user') {
+                    exportText += `Q: ${userMsg.content}\n\n`;
+                }
+                
+                if (botMsg && botMsg.role === 'assistant') {
+                    exportText += `A: ${botMsg.content}\n\n`;
+                    exportText += `${'-'.repeat(40)}\n\n`;
+                }
+            }
+            
+            const blob = new Blob([exportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `clinical_chat_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Initialize
+        updateUI();
+        
+        // Handle viewport height changes on mobile
+        window.addEventListener('resize', () => {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        });
+    </script>
+</body>
+</html>
