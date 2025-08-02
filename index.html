@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Clinical RAG Chatbot - Kimi Edition</title>
+    <title>Clinical RAG Chatbot - Improved Version</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
+        // Set worker with better error handling
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     </script>
     <style>
-        /* Keep all your existing CSS styles */
+        /* Keep all existing CSS styles */
         * {
             margin: 0;
             padding: 0;
@@ -117,6 +118,11 @@
             display: block;
         }
         
+        .processing-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
         .progress-bar {
             width: 100%;
             height: 4px;
@@ -161,6 +167,10 @@
         
         .file-tag.ready {
             background: #4CAF50;
+        }
+        
+        .file-tag.error {
+            background: #f44336;
         }
         
         .file-tag .remove {
@@ -412,6 +422,7 @@
             padding: 4px;
             border-radius: 4px;
             margin-top: 4px;
+            word-wrap: break-word;
         }
         
         .api-status.success {
@@ -422,6 +433,32 @@
         .api-status.error {
             background: #ffebee;
             color: #c62828;
+        }
+        
+        .api-status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .api-status.warning {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .debug-panel {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #666;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .debug-panel.show {
+            display: block;
         }
         
         /* Mobile-specific adjustments */
@@ -500,7 +537,7 @@
     <div class="container">
         <div class="header">
             <h1>🧠 Clinical RAG Chatbot</h1>
-            <p>Powered by Kimi - 128K Context for Clinical Documents</p>
+            <p>Improved Version with Better Error Handling</p>
         </div>
         <div class="upload-section">
             <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -509,7 +546,7 @@
                     📄 Upload Clinical PDFs
                 </div>
                 <div style="font-size: 11px; color: #999;">
-                    Kimi handles large documents efficiently
+                    Improved processing with better error handling
                 </div>
             </div>
             
@@ -527,42 +564,58 @@
                 <span id="statsText">0 documents, 0 chunks</span>
             </div>
             
+            <div class="debug-panel" id="debugPanel">
+                <strong>Debug Log:</strong><br>
+                <div id="debugContent"></div>
+            </div>
+            
             <div class="api-config">
                 <h3>🔑 API Configuration</h3>
                 <label for="apiProvider">API Provider:</label>
                 <select id="apiProvider">
-                    <option value="moonshot">Moonshot (Kimi)</option>
+                    <option value="openrouter">OpenRouter</option>
                     <option value="openai">OpenAI</option>
                     <option value="groq">Groq</option>
+                    <option value="moonshot">Moonshot</option>
                 </select>
                 
                 <label for="apiKey">API Key:</label>
-                <input type="password" id="apiKey" placeholder="Enter your API key">
+                <input type="password" id="apiKey" placeholder="Enter your OpenRouter API key" />
                 
                 <label for="llmModel">Model:</label>
                 <select id="llmModel">
-                    <option value="moonshot-v1-8k">moonshot-v1-8k</option>
-                    <option value="moonshot-v1-32k">moonshot-v1-32k</option>
-                    <option value="moonshot-v1-128k">moonshot-v1-128k</option>
-                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                    <option value="gpt-4">gpt-4</option>
-                    <option value="gpt-4-turbo">gpt-4-turbo</option>
-                    <option value="llama3-8b-8192">llama3-8b-8192</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+                    <!-- OpenRouter Free Models -->
+                    <option value="qwen/qwen3-coder:free" selected>Qwen3-Coder (Free)</option>
+                    <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B (Free)</option>
+                    <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+                    <option value="google/gemma-7b-it:free">Gemma 7B (Free)</option>
                 </select>
                 
                 <div id="apiStatus" class="api-status" style="display: none;"></div>
+                
+                <div style="margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 10px; color: #666;">
+                    <strong>OpenRouter Setup:</strong><br>
+                    1. Sign up at <a href="https://openrouter.ai" target="_blank" style="color: #1976d2;">openrouter.ai</a><br>
+                    2. Get free API key from <a href="https://openrouter.ai/keys" target="_blank" style="color: #1976d2;">openrouter.ai/keys</a><br>
+                    3. Free models available without payment<br>
+                    4. Keys start with "sk-or-"
+                </div>
+                
+                <button onclick="toggleDebug()" style="margin-top: 8px; padding: 4px 8px; font-size: 10px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                    Toggle Debug
+                </button>
             </div>
         </div>
         <div class="chat-container">
             <div class="messages" id="messages">
                 <div class="message bot">
-                    🧠 <strong>Kimi-Powered Clinical Assistant</strong><br><br>
-                    I use Moonshot's Kimi model with 128K context window to analyze your clinical documents:
-                    <br>• Process large clinical documents efficiently
-                    <br>• Extract and understand complex medical information
-                    <br>• Provide evidence-based clinical responses
-                    <br><br>Perfect for comprehensive clinical document analysis!
+                    🧠 <strong>Improved Clinical Assistant</strong><br><br>
+                    Enhanced version with better error handling and debugging:
+                    <br>• Improved PDF processing
+                    <br>• Better error messages
+                    <br>• Debug panel for troubleshooting
+                    <br>• Timeout protection
+                    <br><br>Configure your API key to get started!
                 </div>
             </div>
             <div class="input-section">
@@ -579,7 +632,7 @@
             </div>
         </div>
         <div class="status-indicator" id="statusIndicator">
-            Upload PDFs and configure API to start
+            Configure API key to start
         </div>
     </div>
     
@@ -590,6 +643,7 @@
         let embeddings = [];
         let conversationHistory = [];
         let isProcessing = false;
+        let debugMode = false;
         let ragStats = {
             totalDocuments: 0,
             totalChunks: 0,
@@ -598,17 +652,40 @@
         
         // API Configuration
         let apiConfig = {
-            provider: 'moonshot',
+            provider: 'openrouter',
             apiKey: '',
-            llmModel: 'moonshot-v1-128k'
+            llmModel: 'qwen/qwen3-coder:free'
         };
         
         // API Endpoints
         const apiEndpoints = {
-            moonshot: 'https://api.moonshot.cn/v1/chat/completions',
+            openrouter: 'https://openrouter.ai/api/v1/chat/completions',
             openai: 'https://api.openai.com/v1/chat/completions',
-            groq: 'https://api.groq.com/openai/v1/chat/completions'
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            moonshot: 'https://api.moonshot.cn/v1/chat/completions'
         };
+        
+        // Debug logging
+        function debugLog(message) {
+            console.log('[DEBUG]', message);
+            if (debugMode) {
+                const debugContent = document.getElementById('debugContent');
+                const timestamp = new Date().toLocaleTimeString();
+                debugContent.innerHTML += `[${timestamp}] ${message}<br>`;
+                debugContent.scrollTop = debugContent.scrollHeight;
+            }
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugPanel = document.getElementById('debugPanel');
+            if (debugMode) {
+                debugPanel.classList.add('show');
+                debugLog('Debug mode enabled');
+            } else {
+                debugPanel.classList.remove('show');
+            }
+        }
         
         // DOM elements
         const fileInput = document.getElementById('fileInput');
@@ -641,129 +718,98 @@
         apiKeyInput.addEventListener('input', updateApiConfig);
         llmModelSelect.addEventListener('change', updateApiConfig);
         
-        // Touch events for mobile
-        uploadArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            document.getElementById('fileInput').click();
-        });
-        
-        // Prevent zoom on double tap
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-        
         // Update API Configuration
         function updateApiConfig() {
             apiConfig.provider = apiProviderSelect.value;
-            apiConfig.apiKey = apiKeyInput.value;
+            apiConfig.apiKey = apiKeyInput.value.trim();
             apiConfig.llmModel = llmModelSelect.value;
             
-            // Update model options based on provider
-            updateModelOptions();
+            debugLog(`API config updated: ${apiConfig.provider}, model: ${apiConfig.llmModel}`);
             
             if (apiConfig.apiKey) {
                 validateApiKey();
             } else {
                 apiStatusDiv.style.display = 'none';
+                updateUI();
             }
         }
         
-        // Update model options based on selected provider
-        function updateModelOptions() {
-            llmModelSelect.innerHTML = '';
-            
-            if (apiConfig.provider === 'moonshot') {
-                llmModelSelect.innerHTML = `
-                    <option value="moonshot-v1-8k">moonshot-v1-8k</option>
-                    <option value="moonshot-v1-32k">moonshot-v1-32k</option>
-                    <option value="moonshot-v1-128k" selected>moonshot-v1-128k</option>
-                `;
-            } else if (apiConfig.provider === 'openai') {
-                llmModelSelect.innerHTML = `
-                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                    <option value="gpt-4">gpt-4</option>
-                    <option value="gpt-4-turbo" selected>gpt-4-turbo</option>
-                `;
-            } else if (apiConfig.provider === 'groq') {
-                llmModelSelect.innerHTML = `
-                    <option value="llama3-8b-8192" selected>llama3-8b-8192</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
-                    <option value="gemma-7b-it">gemma-7b-it</option>
-                `;
-            }
-            
-            apiConfig.llmModel = llmModelSelect.value;
-        }
-        
-        // Validate API Key
+        // Validate API Key with timeout
         async function validateApiKey() {
             try {
-                apiStatusDiv.textContent = 'Validating...';
-                apiStatusDiv.className = 'api-status';
+                debugLog('Validating API key...');
+                apiStatusDiv.textContent = 'Validating API key...';
+                apiStatusDiv.className = 'api-status info';
                 apiStatusDiv.style.display = 'block';
                 
-                let response;
+                // Add timeout to prevent hanging
+                const timeoutId = setTimeout(() => {
+                    throw new Error('API validation timeout (30s)');
+                }, 30000);
                 
-                if (apiConfig.provider === 'moonshot') {
-                    // For Moonshot, we'll make a simple test request
-                    response = await fetch(apiEndpoints.moonshot, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiConfig.apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: apiConfig.llmModel,
-                            messages: [{ role: 'user', content: 'Hello' }],
-                            max_tokens: 10
-                        })
-                    });
-                } else if (apiConfig.provider === 'openai') {
-                    response = await fetch('https://api.openai.com/v1/models', {
-                        headers: {
-                            'Authorization': `Bearer ${apiConfig.apiKey}`
-                        }
-                    });
-                } else if (apiConfig.provider === 'groq') {
-                    response = await fetch('https://api.groq.com/openai/v1/models', {
-                        headers: {
-                            'Authorization': `Bearer ${apiConfig.apiKey}`
-                        }
-                    });
+                const endpoint = apiEndpoints[apiConfig.provider];
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiConfig.apiKey}`
+                };
+                
+                if (apiConfig.provider === 'openrouter') {
+                    headers['HTTP-Referer'] = window.location.href;
+                    headers['X-Title'] = 'Clinical RAG Chatbot';
                 }
                 
-                if (response && response.ok) {
-                    apiStatusDiv.textContent = 'API key valid';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        model: apiConfig.llmModel,
+                        messages: [{ role: 'user', content: 'Test' }],
+                        max_tokens: 5
+                    })
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    debugLog('API key validation successful');
+                    apiStatusDiv.textContent = '✅ API key valid and connected';
                     apiStatusDiv.className = 'api-status success';
-                    updateUI();
                 } else {
-                    throw new Error('Invalid key');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
                 }
+                
+                updateUI();
+                
             } catch (error) {
-                apiStatusDiv.textContent = 'Invalid API key';
+                debugLog(`API validation error: ${error.message}`);
+                apiStatusDiv.textContent = `❌ ${error.message}`;
                 apiStatusDiv.className = 'api-status error';
+                updateUI();
             }
         }
         
+        // Enhanced file handling with better error handling
         async function handleFiles(event) {
-            const files = Array.from(event.target.files);
-            const newFiles = files.filter(file => 
-                file.type === 'application/pdf' && 
-                !uploadedFiles.find(f => f.name === file.name)
-            );
+            debugLog(`Handling ${event.target.files.length} files`);
             
-            if (newFiles.length === 0) return;
+            const files = Array.from(event.target.files);
+            const newFiles = files.filter(file => {
+                if (file.type !== 'application/pdf') {
+                    debugLog(`Skipping non-PDF file: ${file.name}`);
+                    return false;
+                }
+                if (uploadedFiles.find(f => f.name === file.name)) {
+                    debugLog(`Skipping duplicate file: ${file.name}`);
+                    return false;
+                }
+                return true;
+            });
+            
+            if (newFiles.length === 0) {
+                debugLog('No new valid files to process');
+                return;
+            }
             
             uploadedFiles.push(...newFiles);
             updateFileDisplay();
@@ -771,7 +817,9 @@
             await processFilesForRAG(newFiles);
         }
         
+        // Enhanced file processing with timeout and better error handling
         async function processFilesForRAG(files) {
+            debugLog(`Starting processing of ${files.length} files`);
             processingStatus.classList.add('show');
             isProcessing = true;
             updateUI();
@@ -781,28 +829,65 @@
                     const file = files[i];
                     const progress = ((i + 1) / files.length) * 100;
                     
+                    debugLog(`Processing file ${i + 1}/${files.length}: ${file.name}`);
                     processingText.textContent = `Processing ${file.name}... (${i + 1}/${files.length})`;
                     progressFill.style.width = `${progress}%`;
                     
-                    await processFileForRAG(file);
+                    try {
+                        await processFileForRAG(file);
+                        debugLog(`Successfully processed: ${file.name}`);
+                    } catch (error) {
+                        debugLog(`Error processing ${file.name}: ${error.message}`);
+                        markFileAsError(file.name, error.message);
+                    }
                 }
                 
+                debugLog('File processing completed');
                 processingStatus.classList.remove('show');
                 ragStatsDiv.classList.add('show');
                 updateRAGStats();
                 updateUI();
                 
             } catch (error) {
-                console.error('Error:', error);
+                debugLog(`Fatal error in file processing: ${error.message}`);
                 processingStatus.classList.remove('show');
+                processingStatus.classList.add('error');
+                processingText.textContent = `Error: ${error.message}`;
+                processingStatus.classList.add('show');
                 updateStatus('Error processing files');
+            } finally {
+                isProcessing = false;
             }
         }
         
+        // Enhanced PDF processing with timeout
         async function processFileForRAG(file) {
+            debugLog(`Starting RAG processing for: ${file.name} (${file.size} bytes)`);
+            
+            const timeoutId = setTimeout(() => {
+                throw new Error(`Processing timeout for ${file.name} (2 minutes)`);
+            }, 120000); // 2 minute timeout
+            
             try {
+                debugLog(`Extracting text from: ${file.name}`);
                 const fullText = await extractTextFromPDF(file);
+                
+                if (!fullText || fullText.trim().length === 0) {
+                    throw new Error(`No text extracted from ${file.name}`);
+                }
+                
+                debugLog(`Extracted ${fullText.length} characters from ${file.name}`);
+                
+                debugLog(`Chunking text for: ${file.name}`);
                 const chunks = chunkClinicalText(fullText, file.name);
+                
+                if (chunks.length === 0) {
+                    throw new Error(`No chunks created from ${file.name}`);
+                }
+                
+                debugLog(`Created ${chunks.length} chunks for: ${file.name}`);
+                
+                debugLog(`Generating embeddings for: ${file.name}`);
                 const chunkEmbeddings = await generateEmbeddings(chunks);
                 
                 documentChunks.push(...chunks);
@@ -818,35 +903,75 @@
                     fileTag.classList.add('ready');
                 }
                 
+                clearTimeout(timeoutId);
+                debugLog(`Successfully completed RAG processing for: ${file.name}`);
+                
             } catch (error) {
-                console.error(`Error processing ${file.name}:`, error);
+                clearTimeout(timeoutId);
+                debugLog(`Error in RAG processing for ${file.name}: ${error.message}`);
                 throw error;
             }
         }
         
+        // Enhanced PDF text extraction with better error handling
         async function extractTextFromPDF(file) {
             try {
+                debugLog(`Loading PDF: ${file.name}`);
                 const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                debugLog(`Creating PDF document object`);
+                const pdf = await pdfjsLib.getDocument({ 
+                    data: arrayBuffer,
+                    verbosity: 0 // Reduce console noise
+                }).promise;
+                
+                debugLog(`PDF loaded. Pages: ${pdf.numPages}`);
                 let fullText = '';
                 
                 for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n';
+                    debugLog(`Processing page ${i}/${pdf.numPages}`);
+                    try {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items
+                            .map(item => item.str)
+                            .join(' ')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                        
+                        if (pageText) {
+                            fullText += pageText + '\n';
+                            debugLog(`Page ${i}: extracted ${pageText.length} characters`);
+                        } else {
+                            debugLog(`Page ${i}: no text found`);
+                        }
+                    } catch (pageError) {
+                        debugLog(`Error processing page ${i}: ${pageError.message}`);
+                        // Continue with other pages
+                    }
                 }
                 
-                return fullText;
+                debugLog(`Total text extracted: ${fullText.length} characters`);
+                return fullText.trim();
+                
             } catch (error) {
-                console.error(`Error extracting text:`, error);
-                throw error;
+                debugLog(`PDF extraction error: ${error.message}`);
+                throw new Error(`Failed to extract text from PDF: ${error.message}`);
             }
         }
         
         function chunkClinicalText(text, sourceFile, chunkSize = 600, overlap = 150) {
+            debugLog(`Chunking text: ${text.length} characters`);
+            
+            if (!text || text.trim().length === 0) {
+                debugLog('No text to chunk');
+                return [];
+            }
+            
             const chunks = [];
             const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            
+            debugLog(`Split into ${sentences.length} sentences`);
             
             let currentChunk = '';
             let chunkIndex = 0;
@@ -863,6 +988,7 @@
                         wordCount: currentChunk.split(' ').length
                     });
                     
+                    // Create overlap
                     const words = currentChunk.split(' ');
                     const overlapWords = words.slice(-Math.floor(overlap / 4));
                     currentChunk = overlapWords.join(' ') + ' ' + sentence;
@@ -872,6 +998,7 @@
                 }
             }
             
+            // Add final chunk
             if (currentChunk.trim().length > 0) {
                 chunks.push({
                     id: `${sourceFile}_chunk_${chunkIndex}`,
@@ -882,33 +1009,47 @@
                 });
             }
             
+            debugLog(`Created ${chunks.length} chunks`);
             return chunks;
         }
         
         async function generateEmbeddings(chunks) {
+            debugLog(`Generating embeddings for ${chunks.length} chunks`);
             const embeddings = [];
             
             for (const chunk of chunks) {
-                const embedding = createSimpleEmbedding(chunk.text);
-                embeddings.push({
-                    id: chunk.id,
-                    vector: embedding,
-                    chunk: chunk
-                });
+                try {
+                    const embedding = createSimpleEmbedding(chunk.text);
+                    embeddings.push({
+                        id: chunk.id,
+                        vector: embedding,
+                        chunk: chunk
+                    });
+                } catch (error) {
+                    debugLog(`Error creating embedding for chunk ${chunk.id}: ${error.message}`);
+                    throw error;
+                }
             }
             
+            debugLog(`Generated ${embeddings.length} embeddings`);
             return embeddings;
         }
         
         function createSimpleEmbedding(text) {
+            if (!text || text.trim().length === 0) {
+                throw new Error('Cannot create embedding for empty text');
+            }
+            
             const words = text.toLowerCase().match(/\b\w+\b/g) || [];
             const vector = new Array(100).fill(0);
             
+            // Create term frequency vector
             words.forEach(word => {
                 const hash = simpleHash(word) % 100;
                 vector[hash] += 1;
             });
             
+            // Normalize vector
             const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
             return magnitude > 0 ? vector.map(val => val / magnitude) : vector;
         }
@@ -936,12 +1077,15 @@
                 normB += vecB[i] * vecB[i];
             }
             
-            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+            const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+            return denominator > 0 ? dotProduct / denominator : 0;
         }
         
         async function retrieveRelevantChunks(query, topK = 3) {
+            debugLog(`Retrieving relevant chunks for query: "${query.substring(0, 50)}..."`);
+            
             if (embeddings.length === 0) {
-                throw new Error('No documents processed');
+                throw new Error('No documents processed yet');
             }
             
             const queryEmbedding = createSimpleEmbedding(query);
@@ -951,14 +1095,28 @@
                 similarity: cosineSimilarity(queryEmbedding, item.vector)
             }));
             
-            return similarities
+            const results = similarities
                 .sort((a, b) => b.similarity - a.similarity)
                 .slice(0, topK);
+            
+            debugLog(`Found ${results.length} relevant chunks with similarities: ${results.map(r => r.similarity.toFixed(3)).join(', ')}`);
+            
+            return results;
+        }
+        
+        function markFileAsError(fileName, errorMessage) {
+            debugLog(`Marking file as error: ${fileName} - ${errorMessage}`);
+            const fileTag = document.querySelector(`[data-filename="${fileName}"]`);
+            if (fileTag) {
+                fileTag.classList.remove('processing');
+                fileTag.classList.add('error');
+                fileTag.title = `Error: ${errorMessage}`;
+            }
         }
         
         function updateFileDisplay() {
             uploadedFilesDiv.innerHTML = uploadedFiles.map(file => `
-                <div class="file-tag processing" data-filename="${file.name}">
+                <div class="file-tag processing" data-filename="${file.name}" title="Processing...">
                     📄 ${file.name}
                     <span class="remove" onclick="removeFile('${file.name}')">&times;</span>
                 </div>
@@ -966,13 +1124,15 @@
         }
         
         function removeFile(fileName) {
+            debugLog(`Removing file: ${fileName}`);
+            
             uploadedFiles = uploadedFiles.filter(f => f.name !== fileName);
             
             const chunksToRemove = documentChunks.filter(chunk => chunk.source === fileName);
             documentChunks = documentChunks.filter(chunk => chunk.source !== fileName);
             embeddings = embeddings.filter(emb => !emb.id.startsWith(fileName));
             
-            ragStats.totalDocuments--;
+            ragStats.totalDocuments = Math.max(0, ragStats.totalDocuments - 1);
             ragStats.totalChunks -= chunksToRemove.length;
             ragStats.totalEmbeddings -= chunksToRemove.length;
             
@@ -983,19 +1143,23 @@
         
         function updateRAGStats() {
             statsText.textContent = `${ragStats.totalDocuments} docs, ${ragStats.totalChunks} chunks`;
+            debugLog(`RAG stats updated: ${ragStats.totalDocuments} docs, ${ragStats.totalChunks} chunks`);
         }
         
         function updateUI() {
             const hasFiles = uploadedFiles.length > 0;
             const allProcessed = !isProcessing && ragStats.totalChunks > 0;
+            const hasValidApiKey = apiConfig.apiKey && apiStatusDiv.classList.contains('success');
             
-            messageInput.disabled = !allProcessed;
-            sendButton.disabled = !allProcessed || isProcessing;
+            messageInput.disabled = !allProcessed || !hasValidApiKey;
+            sendButton.disabled = !allProcessed || isProcessing || !hasValidApiKey;
             
-            if (allProcessed) {
-                updateStatus(`Ready: ${ragStats.totalChunks} chunks`);
+            if (allProcessed && hasValidApiKey) {
+                updateStatus(`Ready: ${ragStats.totalChunks} chunks loaded`);
             } else if (isProcessing) {
-                updateStatus('Processing...');
+                updateStatus('Processing files...');
+            } else if (!hasValidApiKey) {
+                updateStatus('Configure valid API key to start');
             } else {
                 updateStatus('Upload PDFs to start');
             }
@@ -1003,6 +1167,7 @@
         
         function updateStatus(message) {
             statusIndicator.textContent = message;
+            debugLog(`Status updated: ${message}`);
         }
         
         function addMessage(content, isUser = false, sourceInfo = null) {
@@ -1032,37 +1197,52 @@
         function formatClinicalResponse(content) {
             let formatted = content;
             
+            // Format headers
             formatted = formatted.replace(/### (.*?)$/gm, '<h3>$1</h3>');
             formatted = formatted.replace(/## (.*?)$/gm, '<h3>$1</h3>');
             formatted = formatted.replace(/# (.*?)$/gm, '<h3>$1</h3>');
+            
+            // Format bold text
             formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Format lists
             formatted = formatted.replace(/^\* (.*?)$/gm, '<li>$1</li>');
             formatted = formatted.replace(/^- (.*?)$/gm, '<li>$1</li>');
-            formatted = formatted.replace(/(<li>.*?<\/li>\s*)+/gs, '<ul>$&</ul>');
+            formatted = formatted.replace(/(<li>.*?<\/li>\s*)+/gs, '<ul>                const fileTag = document.querySelector(`[data-filename="${file.name}"]`);
+                if (fileTag) {
+                    fileTag</ul>');
+            
+            // Format line breaks
             formatted = formatted.replace(/\n\n/g, '<br><br>');
             formatted = formatted.replace(/\n/g, '<br>');
             
+            // Add disclaimer for medical content
             if (formatted.toLowerCase().includes('treatment') || 
                 formatted.toLowerCase().includes('diagnosis') || 
                 formatted.toLowerCase().includes('medication')) {
-                formatted += '<div class="disclaimer">⚠️ For educational use only</div>';
+                formatted += '<div class="disclaimer">⚠️ For educational purposes only. Not medical advice.</div>';
             }
             
             return formatted;
         }
         
         async function sendMessage() {
-            if (isProcessing || !messageInput.value.trim() || ragStats.totalChunks === 0) return;
+            if (isProcessing || !messageInput.value.trim() || ragStats.totalChunks === 0) {
+                debugLog('Cannot send message: processing, empty input, or no chunks');
+                return;
+            }
             
             const userMessage = messageInput.value.trim();
             messageInput.value = '';
             isProcessing = true;
             sendButton.disabled = true;
             
+            debugLog(`Sending message: "${userMessage}"`);
+            
             addMessage(userMessage, true);
             conversationHistory.push({ role: "user", content: userMessage });
             
-            const loadingMessage = addMessage('🧠 Searching...', false);
+            const loadingMessage = addMessage('🧠 Analyzing documents...', false);
             loadingMessage.classList.add('loading');
             
             try {
@@ -1070,16 +1250,18 @@
                 loadingMessage.remove();
                 
                 const sourceInfo = result.sources.map(source => 
-                    `📄 ${source.source} <span class="relevance-score">${Math.round(source.similarity * 100)}%</span>`
+                    `📄 ${source.source} (chunk ${source.chunkIndex + 1}) <span class="relevance-score">${Math.round(source.similarity * 100)}%</span>`
                 ).join('<br>');
                 
                 addMessage(result.response, false, sourceInfo);
                 conversationHistory.push({ role: "assistant", content: result.response });
                 
+                debugLog('Message sent successfully');
+                
             } catch (error) {
-                console.error('Error:', error);
+                debugLog(`Error sending message: ${error.message}`);
                 loadingMessage.remove();
-                addMessage('❌ Error. Try again.', false);
+                addMessage(`❌ Error: ${error.message}`, false);
             } finally {
                 isProcessing = false;
                 updateUI();
@@ -1088,34 +1270,46 @@
         
         async function queryRAGSystem(question) {
             try {
+                debugLog(`Querying RAG system with: "${question}"`);
+                
                 const relevantChunks = await retrieveRelevantChunks(question, 3);
                 
                 if (relevantChunks.length === 0) {
-                    throw new Error('No relevant info found');
+                    throw new Error('No relevant information found in documents');
                 }
                 
                 const context = relevantChunks.map((item, index) => 
-                    `[Doc: ${item.chunk.source}, Part ${item.chunkIndex + 1}]\n${item.chunk.text}`
+                    `[Document: ${item.chunk.source}, Section ${item.chunkIndex + 1}]\n${item.chunk.text}`
                 ).join('\n\n---\n\n');
                 
-                const systemPrompt = `You are a clinical assistant using RAG. Base your response ONLY on the provided passages. If insufficient info, say so. Reference specific documents. Use professional medical language.
+                const systemPrompt = `You are a clinical AI assistant using retrieval-augmented generation (RAG). 
 
-CONTEXT:
+IMPORTANT INSTRUCTIONS:
+- Base your response ONLY on the provided document excerpts
+- If the documents don't contain enough information, clearly state this
+- Reference specific documents when making claims
+- Use professional medical language but keep explanations clear
+- Include relevant medical terminology
+- Always add appropriate disclaimers for clinical content
+
+DOCUMENT EXCERPTS:
 ${context}
 
-QUESTION: ${question}`;
+USER QUESTION: ${question}
+
+Please provide a comprehensive response based on the available documents.`;
+                
+                debugLog('Sending request to LLM API');
                 
                 const endpoint = apiEndpoints[apiConfig.provider];
                 const headers = {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiConfig.apiKey}`
                 };
                 
-                if (apiConfig.provider === 'moonshot') {
-                    headers['Authorization'] = `Bearer ${apiConfig.apiKey}`;
-                } else if (apiConfig.provider === 'openai') {
-                    headers['Authorization'] = `Bearer ${apiConfig.apiKey}`;
-                } else if (apiConfig.provider === 'groq') {
-                    headers['Authorization'] = `Bearer ${apiConfig.apiKey}`;
+                if (apiConfig.provider === 'openrouter') {
+                    headers['HTTP-Referer'] = window.location.href;
+                    headers['X-Title'] = 'Clinical RAG Chatbot';
                 }
                 
                 const response = await fetch(endpoint, {
@@ -1124,29 +1318,33 @@ QUESTION: ${question}`;
                     body: JSON.stringify({
                         model: apiConfig.llmModel,
                         messages: [{ role: "user", content: systemPrompt }],
-                        max_tokens: 2000,
+                        max_tokens: 1500,
                         temperature: 0.1
                     })
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
                 }
                 
                 const data = await response.json();
+                const responseText = data.choices[0].message.content;
+                
+                debugLog(`Received response: ${responseText.length} characters`);
                 
                 return {
-                    response: data.choices[0].message.content,
+                    response: responseText,
                     sources: relevantChunks.map(item => ({
                         source: item.chunk.source,
-                        chunkIndex: item.chunkIndex,
+                        chunkIndex: item.chunk.chunkIndex,
                         similarity: item.similarity,
                         text: item.chunk.text.substring(0, 150) + '...'
                     }))
                 };
                 
             } catch (error) {
-                console.error('Error querying RAG:', error);
+                debugLog(`Error in RAG query: ${error.message}`);
                 throw error;
             }
         }
@@ -1157,10 +1355,10 @@ QUESTION: ${question}`;
                 return;
             }
             
-            let exportText = `Clinical RAG Chat - Kimi Edition Export\n`;
+            let exportText = `Clinical RAG Chat Export - Improved Version\n`;
             exportText += `Date: ${new Date().toLocaleString()}\n`;
             exportText += `Provider: ${apiConfig.provider}, Model: ${apiConfig.llmModel}\n`;
-            exportText += `Docs: ${ragStats.totalDocuments}, Chunks: ${ragStats.totalChunks}\n`;
+            exportText += `Documents: ${ragStats.totalDocuments}, Chunks: ${ragStats.totalChunks}\n`;
             exportText += `${'='.repeat(60)}\n\n`;
             
             for (let i = 0; i < conversationHistory.length; i += 2) {
@@ -1181,7 +1379,7 @@ QUESTION: ${question}`;
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `clinical_chat_kimi_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `clinical_chat_improved_${new Date().toISOString().split('T')[0]}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1189,7 +1387,7 @@ QUESTION: ${question}`;
         }
         
         // Initialize
-        updateModelOptions();
+        debugLog('Initializing Clinical RAG Chatbot');
         updateUI();
         
         // Handle viewport height changes on mobile
@@ -1197,6 +1395,14 @@ QUESTION: ${question}`;
             const vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         });
+        
+        // Test PDF.js availability
+        if (typeof pdfjsLib === 'undefined') {
+            debugLog('ERROR: PDF.js not loaded properly');
+            updateStatus('Error: PDF.js not loaded');
+        } else {
+            debugLog('PDF.js loaded successfully');
+        }
     </script>
 </body>
 </html>
